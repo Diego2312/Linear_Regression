@@ -1,6 +1,12 @@
 import pandas as pd
+from matplotlib import pyplot as plt
+
+# Load datasets
+df_it_pop = pd.read_csv(r"C:\Users\Owner\ACSAI\Extra\Human-population-analysis\Datasets\Italy_population.csv")
+df_it_lf = pd.read_csv(r"C:\Users\Owner\ACSAI\Extra\Human-population-analysis\Datasets\Italy_life_expectancy.csv")
 
 
+# Define functions for gradient descent
 def update_w_b(time, temps, w, b, alpha):
     dw = 0.0
     db = 0.0
@@ -19,7 +25,6 @@ def update_w_b(time, temps, w, b, alpha):
 def train(time, temps, w, b, alpha, epochs):
     for e in range(epochs):
         w, b = update_w_b(time, temps, w, b, alpha)
-
         if e % 400 == 0:
             print("epoch: ", e, "loss: ", avg_loss(time, temps, w, b))
     return w, b
@@ -28,10 +33,8 @@ def train(time, temps, w, b, alpha, epochs):
 def avg_loss(time, temps, w, b):
     N = len(time)
     total_error = 0.0
-
     for i in range(N):
         total_error += (temps[i] - ((time[i] * w) + b)) ** 2
-
     return total_error / float(N)
 
 
@@ -39,19 +42,52 @@ def predict(w, b, time):
     return w * time + b
 
 
-# Normalize the time data
-time = [2000, 2001, 2002, 2003, 2004]
-temps = [24, 23, 26, 28, 25]
-time_min = min(time)
-time_max = max(time)
-time_norm = [(t - time_min) / (time_max - time_min) for t in time]
+# Train model (Population as a function of life expectancy)
 
+# Normalize the Age
+age_min = df_it_lf["Age"].min()
+age_max = df_it_lf["Age"].max()
+df_it_lf["age_norm"] = df_it_lf["Age"].apply(lambda x: (x - age_min) / (age_max - age_min))
+
+# Set training parameters
 w = 0.5
 b = 0.3
-alpha = 0.001  # Use a smaller learning rate
+alpha = 0.001  #Learning rate
 
-w, b = train(time_norm, temps, w, b, alpha, 1200)
+x = df_it_lf["age_norm"].values #Convert series into values
+y = df_it_pop["Population"].values
 
-# Predict the value for 2005
-time_pred = (2005 - time_min) / (time_max - time_min)
-print(predict(w, b, time_pred))
+# Train the model
+w, b = train(x, y, w, b, alpha, 10001) #train for 10001 epochs
+
+# Test prediction
+to_predict = 70
+pred_norm = (to_predict - age_min) / (age_max - age_min)
+predicted_population = predict(w, b, pred_norm)
+
+
+# Plot
+
+
+plt.figure(figsize=(8,8))
+
+# Function with trained parameters
+x_norm = df_it_lf["age_norm"].values
+y_pred = w * x_norm + b #The best fit line must be created using the normalized values since the model was trained on normalized values
+
+# Plot best fit line
+x_actual = df_it_lf["Age"].values #Corresponding, non normalized age values
+plt.plot(x_actual, y_pred, label="Best fit line") #We plot the predicted values for each actual age, eventhough the predicted values are calculated from the normalized ages
+
+# Scatter plot of actual data
+plt.scatter(df_it_lf["Age"], df_it_pop["Population"], color="red", label="Actual data")
+
+# Plot details
+plt.title("Linear Regression vs Actual data (ITA life expectancy and population)")
+plt.xlabel("Age")
+plt.ylabel("Population (10 million)")
+plt.legend()
+
+#plt.savefig(r"C:\Users\Owner\ACSAI\Extra\Linear_Regression\plots\Linear_Regression_ITA_Pop_LfEx.png")
+
+plt.show()
